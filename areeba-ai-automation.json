@@ -1,0 +1,344 @@
+{
+  "name": "areeba-ai-automation",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "AI Lead Form",
+        "formDescription": "Please provide your details and project requirements.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Name"
+            },
+            {
+              "fieldLabel": "Email",
+              "fieldType": "email"
+            },
+            {
+              "fieldLabel": "Company"
+            },
+            {
+              "fieldLabel": "What do you need help with?",
+              "fieldType": "textarea"
+            },
+            {
+              "fieldLabel": "Estimated Budget"
+            }
+          ]
+        },
+        "responseMode": "lastNode",
+        "options": {
+          "useWorkflowTimezone": true
+        }
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        -848,
+        -160
+      ],
+      "id": "b27f3ddf-6ddf-408c-8b4b-1f2b2242b44b",
+      "name": "On form submission",
+      "webhookId": "94d731f3-e102-4eef-9eae-f94cf78064b8"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analyze the customer lead using ONLY the information provided in the form.\n\nDo not make assumptions about the customer's budget, company, email, or buying intent.\n\nDetermine:\n\n1. Lead Qualification:\n- Qualified: The customer has a clear business/project requirement and enough information to understand their need.\n- Not Qualified: The request is irrelevant, clearly invalid, or contains insufficient information.\n- Needs More Information: The customer may be a potential lead, but important details are missing.\n\n2. Priority:\n- High: Clear requirement and strong potential business need.\n- Medium: Relevant requirement but some important information is missing.\n- Low: Very unclear, irrelevant, or insufficient information.\n\n3. Lead Score:\nGive a score from 0 to 100 based only on:\n- Clarity of requirement\n- Relevance of the request\n- Completeness of information\n- Estimated budget, if provided\n\n4. Main Requirement:\nClearly summarize what the customer is asking for.\n\n5. Reason:\nBriefly explain why you assigned this qualification, priority, and score.\n\nCustomer information:\nName: {{ $json.Name }}\nEmail: {{ $json.Email }}\nCompany: {{ $json.Company }}\nProject Requirement: {{ $json[\"What do you need help with?\"] }}\nEstimated Budget: {{ $json[\"Estimated Budget\"] }}\n\nReturn the result in exactly this format:\n\nLead Qualification:\nPriority:\nLead Score:\nMain Requirement:\nReason:",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -608,
+        -160
+      ],
+      "id": "c79176f0-3cf3-47f8-b82d-e59e4ea76a31",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -608,
+        48
+      ],
+      "id": "aa889b6c-d999-42be-a0a6-6777edb4ae54",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "E1NeRTutVKxRhxZ8",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "02f1cef2-e5d4-408d-926d-609e34cf8646",
+              "name": "Name",
+              "value": "={{ $('On form submission').item.json.Name }}",
+              "type": "string"
+            },
+            {
+              "id": "f53ff400-78ab-4ae1-bb14-2cab03d4991a",
+              "name": "Email",
+              "value": "={{ $('On form submission').item.json.Email }}",
+              "type": "string"
+            },
+            {
+              "id": "cc35887f-a6ab-4032-b2aa-049319ce829d",
+              "name": "Company",
+              "value": "={{ $('On form submission').item.json.Company }}",
+              "type": "string"
+            },
+            {
+              "id": "69a71c17-b945-4e26-a68c-999d85ce0c93",
+              "name": "Requirement",
+              "value": "={{ $('On form submission').item.json[\"What do you need help with?\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "cc4c90cd-fa84-4a09-b62f-46032a602129",
+              "name": "Budget",
+              "value": "={{ $('On form submission').item.json[\"Estimated Budget\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "f9921d7c-3766-464f-b169-6e13e4c974f8",
+              "name": "Qualification",
+              "value": "={{ $json.output.match(/Lead Qualification:\\s*(.*)/)?.[1] || \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "dd44a154-6985-4d3b-a978-26713ca3831a",
+              "name": "Priority",
+              "value": "={{ $json.output.match(/Priority:\\s*(.*)/)?.[1] || \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "2f089628-325f-4600-8dfd-8cf683692473",
+              "name": "Score",
+              "value": "={{ Number($json.output.match(/Lead Score:\\s*(\\d+)/)?.[1] || 0) }}",
+              "type": "string"
+            },
+            {
+              "id": "934f83a7-8294-4a41-81b0-27ee00badf19",
+              "name": "Reason",
+              "value": "={{ $json.output.match(/Reason:\\s*([\\s\\S]*)/)?.[1]?.trim() || \"\" }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -240,
+        -160
+      ],
+      "id": "68b158ab-a633-4c32-b344-e296ca436403",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1i0INHLxPongIdGes70juFMkVwBa8zCF3jUGexphAhxg",
+          "mode": "list",
+          "cachedResultName": "AI Lead Generation 2",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1i0INHLxPongIdGes70juFMkVwBa8zCF3jUGexphAhxg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Leads 2",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1i0INHLxPongIdGes70juFMkVwBa8zCF3jUGexphAhxg/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Requirement",
+              "displayName": "Requirement",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Budget",
+              "displayName": "Budget",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Qualification",
+              "displayName": "Qualification",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Priority",
+              "displayName": "Priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Score",
+              "displayName": "Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Reason",
+              "displayName": "Reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -80,
+        -48
+      ],
+      "id": "04b0a5e6-23ca-4742-8b1f-2d3d8e475e60",
+      "name": "Append row in sheet",
+      "retryOnFail": false,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "LiZ1J4gkX8EaSic0",
+          "name": "Google Sheets account 4"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "a74399fe-6704-45c4-ab48-1a261974c046",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "7eb33128ef0c7b98b18b314e94576d20c69394cdd5988e77e0a5dc0424c4b376"
+  },
+  "nodeGroups": [],
+  "id": "CslNlEKFl4P3irIh",
+  "tags": []
+}
